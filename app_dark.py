@@ -36,26 +36,35 @@ def login_pin():
     st.markdown("<h2 style='text-align:center; color:white;'>Escribe tu clave</h2>", unsafe_allow_html=True)
 
     # Mostrar casillas PIN
-    pin_display = "".join(["⬜" for _ in range(5 - len(st.session_state.pin))])
-    st.markdown(
-        f"<h1 style='text-align:center; color:#EAEAEA;'>{st.session_state.pin}{pin_display}</h1>",
-        unsafe_allow_html=True
+    pin_boxes = "".join(
+        [f"<span style='display:inline-block;width:40px;height:40px;margin:5px;"
+         f"border-radius:8px;background-color:#2c2c2c;color:white;"
+         f"font-size:24px;text-align:center;line-height:40px;'>"
+         f"{d if i < len(st.session_state.pin) else ''}</span>"
+         for i, d in enumerate("12345")]
     )
+    st.markdown(f"<div style='text-align:center;'>{pin_boxes}</div>", unsafe_allow_html=True)
 
     # Teclado numérico
-    cols = st.columns(3)
-    for i, num in enumerate(["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]):
-        if i % 3 == 0:
-            cols = st.columns(3)
-        if cols[i % 3].button(num, use_container_width=True):
-            if len(st.session_state.pin) < 5:
-                st.session_state.pin += num
-                st.rerun()
+    keypad = [["1", "2", "3"],
+              ["4", "5", "6"],
+              ["7", "8", "9"],
+              ["", "0", "⌫"]]
 
-    # Botón borrar
-    if st.button("Borrar", use_container_width=True):
-        st.session_state.pin = st.session_state.pin[:-1]
-        st.rerun()
+    for row in keypad:
+        cols = st.columns(3)
+        for i, key in enumerate(row):
+            if key == "":
+                cols[i].write(" ")
+            elif key == "⌫":
+                if cols[i].button("⌫", use_container_width=True):
+                    st.session_state.pin = st.session_state.pin[:-1]
+                    st.rerun()
+            else:
+                if cols[i].button(key, use_container_width=True):
+                    if len(st.session_state.pin) < 5:
+                        st.session_state.pin += key
+                        st.rerun()
 
     # Validación
     if len(st.session_state.pin) == 5:
@@ -68,11 +77,28 @@ def login_pin():
             st.session_state.pin = ""
 
 # ==============================
-# Dashboard
+# Dashboard principal
 # ==============================
 def dashboard():
-    st.title("Panel de Control")
-    st.write("Aquí va el contenido de tu app...")
+    st.sidebar.title("Quiero.Money")
+    menu = st.sidebar.radio(
+        "Navegación",
+        ["Panel de Control", "Recargar", "Comprar BTC", "Vender BTC", "Enviar", "Historial"]
+    )
+
+    if menu == "Panel de Control":
+        st.title("Panel de Control")
+        st.write("Aquí va tu saldo y el gráfico de BTC 📊")
+    elif menu == "Recargar":
+        st.title("Recargar saldo")
+    elif menu == "Comprar BTC":
+        st.title("Comprar Bitcoin")
+    elif menu == "Vender BTC":
+        st.title("Vender Bitcoin")
+    elif menu == "Enviar":
+        st.title("Enviar dinero")
+    elif menu == "Historial":
+        st.title("Historial de transacciones")
 
 # ==============================
 # Router de páginas

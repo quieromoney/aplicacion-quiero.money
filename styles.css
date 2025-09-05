@@ -2,6 +2,7 @@
 body {
     background-color: #0e0e0e;
     color: white;
+    font-family: 'Arial', sans-serif;
 }
 
 /* Inputs */
@@ -15,14 +16,22 @@ input {
     font-size: 18px;
 }
 
-/* Botones */
+/* Botones generales */
 button {
     background-color: #f1c40f !important;
     color: black !important;
     font-weight: bold !important;
     border-radius: 12px !important;
-    padding: 12px !important;
-    font-size: 18px !important;
+    padding: 14px !important;
+    font-size: 20px !important;
+}
+
+/* Botones del teclado PIN */
+.stButton > button {
+    height: 70px !important;
+    border-radius: 15px !important;
+    margin: 4px !important;
+    font-size: 24px !important;
 }
 
 /* Mensajes */
