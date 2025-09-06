@@ -1,4 +1,3 @@
-
 import os
 import time
 import streamlit as st
@@ -17,10 +16,29 @@ except Exception:
 st.set_page_config(page_title="Quiero.Money", page_icon="💳", layout="wide")
 
 # ---------- Cargar estilos ----------
-CSS_FILE = "styles.css"
+CSS_FILE = "styles_mobile.css"
 if os.path.exists(CSS_FILE):
     with open(CSS_FILE, "r", encoding="utf-8", errors="ignore") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+else:
+    # Fallback a estilos básicos para móvil
+    st.markdown("""
+    <style>
+    @media (max-width: 768px) {
+        .stButton > button {
+            min-height: 44px !important;
+            font-size: 16px !important;
+        }
+        div[data-testid="stVerticalBlock"] {
+            gap: 0.5rem;
+        }
+        .card {
+            padding: 12px;
+            margin: 8px 0;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ---------- Estado inicial ----------
 def init_state():
@@ -37,6 +55,7 @@ def init_state():
         st.session_state.phone_tmp = ""
         st.session_state.page = "Panel de Control"
         st.session_state.initialized = True
+        st.session_state.mobile_view = True
 
 init_state()
 
@@ -120,26 +139,28 @@ def login_pin():
     # PIN esperado
     PIN_CORRECTO = "12345"
 
-    # Inputs individuales tipo OTP
+    # Inputs individuales tipo OTP - mejorados para móvil
+    st.markdown('<div class="pin-container">', unsafe_allow_html=True)
     cols = st.columns(5, gap="small")
     pin_digits = []
     for i, c in enumerate(cols):
         with c:
-            d = st.text_input(f"{i+1}", max_chars=1, key=f"pin_{i}", label_visibility="collapsed")
-            # Forzar solo número
+            d = st.text_input(f"{i+1}", max_chars=1, key=f"pin_{i}", 
+                             label_visibility="collapsed")
             if d and not d.isdigit():
                 st.session_state[f"pin_{i}"] = ""
                 d = ""
             pin_digits.append(d or "")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # Botones
+    # Botones más grandes para móviles
     c1, c2 = st.columns([1,1])
     with c1:
-        if st.button("Editar número", use_container_width=True):
+        if st.button("↶ Editar número", use_container_width=True):
             st.session_state.login_step = "phone"
             st.experimental_rerun()
     with c2:
-        if st.button("Ingresar", use_container_width=True):
+        if st.button("Ingresar →", use_container_width=True):
             pin = "".join(pin_digits)
             if pin == PIN_CORRECTO:
                 st.session_state.authenticated = True
@@ -150,16 +171,22 @@ def login_pin():
                 st.error("PIN incorrecto. Vuelve a intentarlo.")
 
 # ---------- UI helpers ----------
-def sidebar_nav():
-    with st.sidebar:
-        st.markdown("<div class='brand'>Quiero.Money</div>", unsafe_allow_html=True)
-        col = st.container()
-        if col.button("Panel de Control", use_container_width=True): st.session_state.page = "Panel de Control"
-        if col.button("Recargar", use_container_width=True): st.session_state.page = "Recargar"
-        if col.button("Comprar BTC", use_container_width=True): st.session_state.page = "Comprar BTC"
-        if col.button("Vender BTC", use_container_width=True): st.session_state.page = "Vender BTC"
-        if col.button("Enviar", use_container_width=True): st.session_state.page = "Enviar"
-        if col.button("Historial", use_container_width=True): st.session_state.page = "Historial"
+def mobile_nav():
+    # Barra de navegación inferior para móviles
+    st.markdown("""
+    <div class="mobile-nav">
+        <button class="nav-btn" onclick="setAppPage('Panel de Control')">📊 Panel</button>
+        <button class="nav-btn" onclick="setAppPage('Recargar')">💸 Recargar</button>
+        <button class="nav-btn" onclick="setAppPage('Comprar BTC')">🔼 BTC</button>
+        <button class="nav-btn" onclick="setAppPage('Vender BTC')">🔽 Vender</button>
+        <button class="nav-btn" onclick="setAppPage('Historial')">📋 Historial</button>
+    </div>
+    <script>
+    function setAppPage(page) {
+        window.location.href = window.location.pathname + '?page=' + encodeURIComponent(page);
+    }
+    </script>
+    """, unsafe_allow_html=True)
 
 def metric_card(title, value, suffix=""):
     st.markdown(f"""
@@ -171,11 +198,12 @@ def metric_card(title, value, suffix=""):
 
 # ---------- Páginas ----------
 def page_panel():
-    st.markdown("<h1 class='page-title'>Panel de Control</h1>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1,1,1], gap="large")
-    with c1: metric_card("Saldo COP", f"${st.session_state.saldo_cop:,.0f}")
-    with c2: metric_card("Saldo BTC", f"{st.session_state.saldo_btc:,.8f}")
-    with c3: metric_card("Precio BTC", f"${get_btc_price_usd():,.2f}", " USD")
+    st.markdown("<h1 class='page-title'>📊 Panel de Control</h1>", unsafe_allow_html=True)
+    
+    # En móvil, mostramos una columna
+    metric_card("Saldo COP", f"${st.session_state.saldo_cop:,.0f}")
+    metric_card("Saldo BTC", f"{st.session_state.saldo_btc:,.8f}")
+    metric_card("Precio BTC", f"${get_btc_price_usd():,.2f}", " USD")
 
     # Tarjeta con gráfico
     df = btc_history_df(7)
@@ -184,7 +212,7 @@ def page_panel():
         fig.update_traces(line_color="#FFD33D")
         fig.update_layout(
             margin=dict(l=8,r=8,t=35,b=8),
-            height=360,
+            height=300,
             paper_bgcolor="#1C1F24",
             plot_bgcolor="#1C1F24",
             font_color="#EAEAF0",
@@ -199,13 +227,15 @@ def page_panel():
         st.markdown("</div>", unsafe_allow_html=True)
 
 def page_recargar():
-    st.markdown("<h1 class='page-title'>Recargar</h1>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2, gap="large")
-
-    with c1:
+    st.markdown("<h1 class='page-title'>💸 Recargar</h1>", unsafe_allow_html=True)
+    
+    # Para móvil usamos pestañas
+    tab1, tab2 = st.tabs(["Nequi", "Daviplata"])
+    
+    with tab1:
         st.markdown("### Nequi")
-        monto = st.number_input("Monto a recargar desde Nequi (COP)", min_value=1, step=1000)
-        if st.button("Confirmar recarga desde Nequi", use_container_width=True):
+        monto = st.number_input("Monto a recargar desde Nequi (COP)", min_value=1, step=1000, key="nequi_mobile")
+        if st.button("Confirmar recarga desde Nequi", use_container_width=True, key="nequi_btn_mobile"):
             if monto <= st.session_state.saldo_nequi:
                 st.session_state.saldo_nequi -= monto
                 st.session_state.saldo_cop += monto
@@ -214,11 +244,11 @@ def page_recargar():
             else:
                 st.error("Saldo insuficiente en Nequi.")
         metric_card("Saldo Nequi", f"${st.session_state.saldo_nequi:,.0f}")
-
-    with c2:
+    
+    with tab2:
         st.markdown("### Daviplata")
-        monto2 = st.number_input("Monto a recargar desde Daviplata (COP)", min_value=1, step=1000, key="davim")
-        if st.button("Confirmar recarga desde Daviplata", use_container_width=True, key="davic"):
+        monto2 = st.number_input("Monto a recargar desde Daviplata (COP)", min_value=1, step=1000, key="davim_mobile")
+        if st.button("Confirmar recarga desde Daviplata", use_container_width=True, key="davic_mobile"):
             if monto2 <= st.session_state.saldo_daviplata:
                 st.session_state.saldo_daviplata -= monto2
                 st.session_state.saldo_cop += monto2
@@ -229,74 +259,84 @@ def page_recargar():
         metric_card("Saldo Daviplata", f"${st.session_state.saldo_daviplata:,.0f}")
 
 def page_comprar():
-    st.markdown("<h1 class='page-title'>Comprar Bitcoin</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='page-title'>🔼 Comprar Bitcoin</h1>", unsafe_allow_html=True)
     precio = get_btc_price_usd()
-    c1, c2 = st.columns([1,1], gap="large")
-    with c1:
-        monto = st.number_input("Monto en COP a comprar", min_value=1, step=1000)
-        if st.button("Confirmar compra", use_container_width=True):
-            if monto <= st.session_state.saldo_cop:
-                btc = monto / precio
-                st.session_state.saldo_cop -= monto
-                st.session_state.saldo_btc += btc
-                add_hist("Compra BTC", f"Comprados {btc:.8f} BTC a ${precio:,.2f} USD",
-                         delta_cop=-monto, delta_btc=btc)
-                st.success(f"Compra realizada: +{btc:.8f} BTC")
-            else:
-                st.error("Saldo COP insuficiente.")
-        metric_card("Saldo COP", f"${st.session_state.saldo_cop:,.0f}")
-        metric_card("Saldo BTC", f"{st.session_state.saldo_btc:,.8f}")
-    with c2:
-        df = btc_history_df(30)
-        if px is not None:
-            fig = px.line(df, x="Fecha", y="BTC_USD", title="BTC últimos 30 días")
-            fig.update_traces(line_color="#FFD33D")
-            fig.update_layout(margin=dict(l=8,r=8,t=35,b=8), height=360,
-                              paper_bgcolor="#15171A", plot_bgcolor="#15171A", font_color="#EAEAF0")
-            st.plotly_chart(fig, use_container_width=True)
+    
+    # Para móvil: todo en una columna
+    monto = st.number_input("Monto en COP a comprar", min_value=1, step=1000)
+    if st.button("Confirmar compra", use_container_width=True):
+        if monto <= st.session_state.saldo_cop:
+            btc = monto / precio
+            st.session_state.saldo_cop -= monto
+            st.session_state.saldo_btc += btc
+            add_hist("Compra BTC", f"Comprados {btc:.8f} BTC a ${precio:,.2f} USD",
+                     delta_cop=-monto, delta_btc=btc)
+            st.success(f"Compra realizada: +{btc:.8f} BTC")
         else:
-            st.line_chart(df.set_index("Fecha")["BTC_USD"])
+            st.error("Saldo COP insuficiente.")
+    
+    metric_card("Saldo COP", f"${st.session_state.saldo_cop:,.0f}")
+    metric_card("Saldo BTC", f"{st.session_state.saldo_btc:,.8f}")
+    
+    # Gráfico después del formulario en móvil
+    df = btc_history_df(30)
+    if px is not None:
+        fig = px.line(df, x="Fecha", y="BTC_USD", title="BTC últimos 30 días")
+        fig.update_traces(line_color="#FFD33D")
+        fig.update_layout(margin=dict(l=8,r=8,t=35,b=8), height=300,
+                          paper_bgcolor="#15171A", plot_bgcolor="#15171A", font_color="#EAEAF0")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.line_chart(df.set_index("Fecha")["BTC_USD"])
 
 def page_vender():
-    st.markdown("<h1 class='page-title'>Vender Bitcoin</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='page-title'>🔽 Vender Bitcoin</h1>", unsafe_allow_html=True)
     precio = get_btc_price_usd()
-    c1, c2 = st.columns([1,1], gap="large")
-    with c1:
-        monto_btc = st.number_input("Monto en BTC a vender", min_value=0.0, step=0.0001, format="%.8f")
-        if st.button("Confirmar venta", use_container_width=True):
-            if monto_btc <= st.session_state.saldo_btc:
-                cop = monto_btc * precio
-                st.session_state.saldo_btc -= monto_btc
-                st.session_state.saldo_cop += cop
-                add_hist("Venta BTC", f"Vendidos {monto_btc:.8f} BTC a ${precio:,.2f} USD",
-                         delta_cop=cop, delta_btc=-monto_btc)
-                st.success(f"Venta realizada: +${cop:,.0f} COP")
-            else:
-                st.error("Saldo BTC insuficiente.")
-        metric_card("Saldo BTC", f"{st.session_state.saldo_btc:,.8f}")
-        metric_card("Saldo COP", f"${st.session_state.saldo_cop:,.0f}")
-    with c2:
-        df = btc_history_df(30)
-        if px is not None:
-            fig = px.line(df, x="Fecha", y="BTC_USD", title="BTC últimos 30 días")
-            fig.update_traces(line_color="#FFD33D")
-            fig.update_layout(margin=dict(l=8,r=8,t=35,b=8), height=360,
-                              paper_bgcolor="#15171A", plot_bgcolor="#15171A", font_color="#EAEAF0")
-            st.plotly_chart(fig, use_container_width=True)
+    
+    monto_btc = st.number_input("Monto en BTC a vender", min_value=0.0, step=0.0001, format="%.8f")
+    if st.button("Confirmar venta", use_container_width=True):
+        if monto_btc <= st.session_state.saldo_btc:
+            cop = monto_btc * precio
+            st.session_state.saldo_btc -= monto_btc
+            st.session_state.saldo_cop += cop
+            add_hist("Venta BTC", f"Vendidos {monto_btc:.8f} BTC a ${precio:,.2f} USD",
+                     delta_cop=cop, delta_btc=-monto_btc)
+            st.success(f"Venta realizada: +${cop:,.0f} COP")
         else:
-            st.line_chart(df.set_index("Fecha")["BTC_USD"])
+            st.error("Saldo BTC insuficiente.")
+    
+    metric_card("Saldo BTC", f"{st.session_state.saldo_btc:,.8f}")
+    metric_card("Saldo COP", f"${st.session_state.saldo_cop:,.0f}")
+    
+    # Gráfico después del formulario en móvil
+    df = btc_history_df(30)
+    if px is not None:
+        fig = px.line(df, x="Fecha", y="BTC_USD", title="BTC últimos 30 días")
+        fig.update_traces(line_color="#FFD33D")
+        fig.update_layout(margin=dict(l=8,r=8,t=35,b=8), height=300,
+                          paper_bgcolor="#15171A", plot_bgcolor="#15171A", font_color="#EAEAF0")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.line_chart(df.set_index("Fecha")["BTC_USD"])
 
 def page_enviar():
-    st.markdown("<h1 class='page-title'>Enviar</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='page-title'>📤 Enviar</h1>", unsafe_allow_html=True)
     st.info("Sección demo para futuras transferencias internas.")
 
 def page_historial():
-    st.markdown("<h1 class='page-title'>Historial</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='page-title'>📋 Historial</h1>", unsafe_allow_html=True)
     if len(st.session_state.hist) == 0:
         st.info("No hay movimientos aún.")
         return
-    df = pd.DataFrame(st.session_state.hist)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    
+    # Para móvil, mostramos una versión más compacta
+    for movimiento in st.session_state.hist:
+        with st.expander(f"{movimiento['fecha']} - {movimiento['tipo']}"):
+            st.write(f"**Detalle:** {movimiento['detalle']}")
+            st.write(f"**Δ COP:** {movimiento['Δ COP']:,.0f}")
+            st.write(f"**Δ BTC:** {movimiento['Δ BTC']:,.8f}")
+            st.write(f"**Saldo COP:** {movimiento['COP']:,.0f}")
+            st.write(f"**Saldo BTC:** {movimiento['BTC']:,.8f}")
 
 # ---------- Render ----------
 if not st.session_state.authenticated:
@@ -306,7 +346,7 @@ if not st.session_state.authenticated:
     else:
         login_pin()
 else:
-    sidebar_nav()
+    # Para móviles: no mostrar sidebar, usar navegación inferior
     page = st.session_state.page
     if page == "Panel de Control": page_panel()
     elif page == "Recargar": page_recargar()
@@ -314,3 +354,6 @@ else:
     elif page == "Vender BTC": page_vender()
     elif page == "Enviar": page_enviar()
     elif page == "Historial": page_historial()
+    
+    # Mostrar navegación inferior
+    mobile_nav()
