@@ -1,177 +1,231 @@
-:root{
-  --bg:#0f1115; --bg-2:#15171A; --text:#EAEAF0; --muted:#B9BECA;
-  --card:#1C1F24; --accent:#FFD33D; --ok:#27AE60; --bad:#E84142;
+:root {
+  --bg: #0e0e0e;
+  --card: #151617;
+  --text: #EAEAF0;
+  --muted: #9aa0a6;
+  --accent: #F1C40F;
 }
 
-html, body, [data-testid="stAppViewContainer"]{
-  background:var(--bg); color:var(--text);
-  font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-  padding-bottom: 70px !important;
-}
-h1,h2,h3,h4{ color:var(--text); }
-header[data-testid="stHeader"]{ background:transparent; }
-.block-container{ padding-top:1rem; padding-bottom: 2rem; }
-
-/* Ocultar sidebar en móviles */
-section[data-testid="stSidebar"]{ 
-  display: none !important; 
+* {
+  box-sizing: border-box;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial;
 }
 
-/* Brand */
-.brand{ font-weight:800; font-size:1.1rem; color:var(--text); margin:.25rem 1rem 1rem 1rem; text-align:center; }
-.login-brand{ font-size:1.3rem; font-weight:800; color:#fff; margin-bottom:.6rem; }
-.login-brand .dot{ color:var(--accent); }
-
-/* Mejoras para móviles */
-@media (max-width: 768px) {
-  .block-container {
-    padding: 1rem 1rem 5rem 1rem !important;
-  }
-  
-  .stButton > button {
-    min-height: 44px !important;
-    font-size: 16px !important;
-  }
-  
-  /* Inputs más grandes para móviles */
-  .stTextInput>div>div>input, .stNumberInput>div>div>input {
-    min-height: 44px;
-    font-size: 16px;
-  }
-  
-  /* Espaciado entre elementos */
-  div[data-testid="stVerticalBlock"] {
-    gap: 0.5rem;
-  }
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Tarjetas */
-.page-title{ font-size:1.8rem; font-weight:800; margin:.4rem 0 1rem 0; }
-.card{ 
-  background:var(--card); 
-  border:1px solid rgba(255,255,255,.06); 
-  border-radius:16px; 
-  padding:16px; 
-  margin:8px 0 14px 0; 
-  box-shadow:0 6px 20px rgba(0,0,0,.35); 
-}
-.card-title{ font-size:.95rem; color:var(--muted); margin-bottom:.35rem; letter-spacing:.2px; }
-.card-value{ font-size:1.35rem; font-weight:800; }
-
-/* --- LOGIN mejorado para móviles --- */
-.login-container{ 
-  text-align:center; 
-  margin:2vh auto 0 auto; 
-  max-width: 90vw;
-}
-.login-title{ font-size:1.8rem; font-weight:800; color:#fff; margin:2px 0 6px 0; }
-.login-subtitle{ font-size:1rem; color:var(--muted); margin-bottom:18px; }
-
-/* Formularios */
-form{
-  background:var(--card); 
-  padding:20px; 
-  border-radius:16px; 
-  box-shadow:0 6px 20px rgba(0,0,0,.35);
-  max-width:100%; 
-  margin:auto;
+#app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 14px;
 }
 
-/* PIN container para móviles */
-.pin-container {
+/* Headers */
+.header {
   display: flex;
-  justify-content: space-between;
-  margin: 1.5rem 0;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
 }
 
-.pin-container .stTextInput {
-  flex: 1;
-  margin: 0 4px;
+.brand {
+  font-weight: 900;
+  color: var(--accent);
+  font-size: 22px;
 }
 
-.pin-container input {
-  text-align: center;
-  font-size: 1.5rem !important;
-  height: 60px !important;
+/* Cards */
+.card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 14px;
+  margin: 12px 0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .5);
+}
+
+.title {
+  font-size: 20px;
+  margin: 6px 0;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin-bottom: 12px;
 }
 
 /* Inputs */
-.stTextInput>div>div>input, .stPasswordInput>div>div>input{
-  background:#1c1f24; 
-  border:1px solid rgba(255,255,255,.1); 
-  color:var(--text);
-  padding:14px 16px; 
-  border-radius:12px;
-  font-size: 16px;
-}
-.stTextInput>div>div>input:focus, .stPasswordInput>div>div>input:focus{ 
-  border:2px solid var(--accent); 
-}
-
-/* Botones generales */
-button[kind="primary"]{ 
-  font-weight:800; 
-  border-radius:14px; 
-  height:50px; 
+.input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: #0f1113;
+  color: var(--text);
   font-size: 16px;
 }
 
-/* --- Navegación inferior para móviles --- */
-.mobile-nav {
+/* Botones */
+.btn {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--accent);
+  color: #111;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.btn.alt {
+  background: #222;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, .1);
+}
+
+/* PIN */
+.pin-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.pin-box {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  background: #0f1113;
+  border: 2px solid rgba(255, 255, 255, .08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+/* Keypad */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.key {
+  background: #121212;
+  border-radius: 10px;
+  padding: 18px;
+  font-size: 20px;
+  text-align: center;
+  color: var(--text);
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, .05);
+  user-select: none;
+}
+
+.empty {
+  background: transparent;
+  border: none;
+  cursor: default;
+}
+
+/* Sidebar */
+.sidebar {
   position: fixed;
   bottom: 0;
   left: 0;
-  right: 0;
-  background: var(--card);
-  border-top: 1px solid rgba(255,255,255,0.1);
+  width: 100%;
+  background: #111;
+  padding: 10px;
   display: flex;
   justify-content: space-around;
-  padding: 10px 0;
-  z-index: 999;
+  z-index: 100;
+  border-top: 1px solid rgba(255, 255, 255, .1);
 }
 
 .nav-btn {
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  font-size: 0.8rem;
-  padding: 8px 5px;
-  border-radius: 8px;
-  cursor: pointer;
+  background: var(--accent);
+  padding: 10px;
+  border-radius: 10px;
   text-align: center;
+  color: #111;
+  font-weight: 800;
+  border: 0;
   flex: 1;
-  margin: 0 2px;
+  margin: 0 4px;
+  font-size: 12px;
 }
 
-.nav-btn:hover {
-  background: rgba(255,255,255,0.05);
+/* Main panel */
+.main {
+  padding-bottom: 70px; /* espacio para el sidebar */
 }
 
-/* Tabs para móviles */
-.stTabs [data-baseweb="tab-list"] {
-  gap: 8px;
+.metric {
+  min-width: 120px;
+  background: #0f1113;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 8px;
 }
 
-.stTabs [data-baseweb="tab"] {
-  height: 40px;
-  white-space: pre-wrap;
-  background-color: rgba(255,255,255,0.05);
-  border-radius: 12px 12px 0 0;
-  gap: 8px;
-  padding: 8px 16px;
+.metric .label {
+  color: var(--muted);
+  font-size: 13px;
 }
 
-.stTabs [aria-selected="true"] {
-  background-color: var(--accent);
-  color: #000;
+.metric .value {
+  font-weight: 800;
+  font-size: 18px;
+  margin-top: 6px;
 }
 
-/* Ajustes para gráficos en móvil */
-.js-plotly-plot .plotly, .plot-container {
-  min-height: 300px !important;
+.chart-card {
+  padding: 8px;
+  background: linear-gradient(180deg, #111, #141414);
+  border-radius: 12px;
+  margin-top: 8px;
 }
 
-/* Mejoras para expansores en historial */
-.streamlit-expanderHeader {
-  font-size: 14px;
+.back {
+  color: var(--accent);
+  cursor: pointer;
+  margin-bottom: 8px;
+  display: inline-block;
+}
+
+/* Tabla */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table td, .table th {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, .05);
+  font-size: 13px;
+}
+
+/* Footer */
+.footer-note {
+  text-align: center;
+  color: var(--muted);
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+/* Responsive ajustes */
+@media(min-width:700px) {
+  #app { max-width: 900px }
+  .sidebar { position: fixed; left: 8px; top: 8px; bottom: auto; width: 140px; flex-direction: column; height: calc(100% - 16px); }
+  .nav-btn { width: 100%; margin: 6px 0; font-size: 14px; }
+  .main { margin-left: 154px; padding-bottom: 0; }
 }
