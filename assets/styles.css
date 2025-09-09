@@ -1,0 +1,369 @@
+:root {
+  --bg: #0D0D0D;
+  --card: #1A1A1A;
+  --accent: #FFD60A;
+  --accent-dark: #E6C100;
+  --text: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --success: #00C853;
+  --error: #FF5252;
+  --warning: #FFAB00;
+}
+
+html, body {
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
+  font-family: 'Inter', 'Arial', sans-serif !important;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+/* Mejoras generales */
+.stApp {
+  background: linear-gradient(135deg, var(--bg) 0%, #151515 100%);
+}
+
+.brand { 
+  font-size: 2.2rem; 
+  font-weight: 900; 
+  margin-bottom: 8px; 
+  color: var(--text); 
+  text-align: center;
+  background: linear-gradient(90deg, var(--accent) 0%, #FFC400 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.accent { color: var(--accent); }
+.centered { max-width: 680px; margin: 0 auto; padding: 16px; }
+
+.card { 
+  background: var(--card); 
+  padding: 20px; 
+  border-radius: 16px; 
+  margin-bottom: 16px; 
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.login-card { 
+  text-align: center; 
+  padding: 24px; 
+}
+
+.small-muted { 
+  color: var(--text-secondary); 
+  font-size: 0.95rem; 
+  margin-bottom: 12px; 
+}
+
+.pin-row { 
+  display: flex; 
+  justify-content: center; 
+  gap: 12px; 
+  margin-bottom: 20px; 
+}
+
+.pin-box { 
+  width: 50px; 
+  height: 50px; 
+  border-radius: 12px; 
+  background: rgba(255, 255, 255, 0.05); 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-size: 24px; 
+  color: var(--text); 
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+}
+
+.pin-box.filled {
+  border-color: var(--accent);
+  background: rgba(255, 214, 10, 0.1);
+}
+
+.metric-card { 
+  padding: 16px; 
+  border-radius: 16px; 
+  text-align: center; 
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.metric-title { 
+  font-size: 0.9rem; 
+  color: var(--text-secondary); 
+  margin-bottom: 8px;
+}
+
+.metric-value { 
+  font-size: 1.4rem; 
+  font-weight: 800; 
+  margin-top: 6px; 
+}
+
+.chart-card { 
+  margin-top: 16px; 
+  border-radius: 16px; 
+  overflow: hidden; 
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Botones principales */
+.stButton > button {
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-dark) 100%) !important;
+  color: black !important;
+  font-weight: 700 !important;
+  border-radius: 12px !important;
+  height: 50px !important;
+  border: none !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 8px rgba(255, 214, 10, 0.2) !important;
+}
+
+.stButton > button:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 12px rgba(255, 214, 10, 0.3) !important;
+}
+
+/* Botones secundarios */
+.secondary-button {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Botones de peligro */
+.danger-button {
+  background: linear-gradient(90deg, var(--error) 0%, #D32F2F 100%) !important;
+  color: white !important;
+}
+
+.back { 
+  color: var(--accent); 
+  cursor: pointer; 
+  margin-bottom: 16px; 
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+/* Formularios */
+.stTextInput > div > div > input {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 12px 16px !important;
+}
+
+.stNumberInput > div > div > input {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 12px 16px !important;
+}
+
+.stSelectbox > div > div {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Sidebar */
+.stSidebar {
+  background: linear-gradient(180deg, #151515 0%, var(--bg) 100%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.stSidebar .stButton > button {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  margin-bottom: 8px;
+  box-shadow: none !important;
+}
+
+.stSidebar .stButton > button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--accent) !important;
+}
+
+/* Alertas y notificaciones */
+.stAlert {
+  border-radius: 12px !important;
+  border: none !important;
+}
+
+.stSuccess {
+  background: rgba(0, 200, 83, 0.15) !important;
+  color: var(--success) !important;
+  border-left: 4px solid var(--success) !important;
+}
+
+.stError {
+  background: rgba(255, 82, 82, 0.15) !important;
+  color: var(--error) !important;
+  border-left: 4px solid var(--error) !important;
+}
+
+.stInfo {
+  background: rgba(3, 169, 244, 0.15) !important;
+  color: #03A9F4 !important;
+  border-left: 4px solid #03A9F4 !important;
+}
+
+.stWarning {
+  background: rgba(255, 171, 0, 0.15) !important;
+  color: var(--warning) !important;
+  border-left: 4px solid var(--warning) !important;
+}
+
+/* Tablas */
+.stTable {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+.stTable > div {
+  background: var(--card) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.stTable th {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text) !important;
+  font-weight: 600 !important;
+}
+
+.stTable td {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+/* QR Code */
+.qr-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Teclado numérico */
+.keypad-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.keypad-button {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  height: 60px !important;
+  font-size: 1.2rem !important;
+  font-weight: 600 !important;
+}
+
+.keypad-button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--accent) !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+  gap: 8px;
+  background-color: var(--card);
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.stTabs [data-baseweb="tab"] {
+  height: 50px;
+  background-color: transparent;
+  border-radius: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.stTabs [aria-selected="true"] {
+  background-color: var(--accent) !important;
+  color: black !important;
+}
+
+/* Progress bar */
+.stProgress > div > div > div {
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-dark) 100%) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .centered {
+    padding: 12px;
+  }
+  
+  .brand {
+    font-size: 1.8rem;
+  }
+  
+  .metric-value {
+    font-size: 1.2rem;
+  }
+  
+  .pin-box {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+}
+
+/* Animaciones */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-dark);
+}
