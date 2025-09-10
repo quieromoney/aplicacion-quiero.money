@@ -1,24 +1,32 @@
+# app_dark.py (versión integrada con diseño y wallet page)
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-from datetime import datetime
 import sqlite3
 import json
 import qrcode
 import io
 import base64
 import requests
+from datetime import datetime
+from pathlib import Path
 from PIL import Image
 
-# Configuración de la página
 st.set_page_config(page_title="Quiero.Money", layout="centered")
 
-# Inicialización de la base de datos
+# ---- load css
+def load_local_css(file_path="styles.css"):
+    p = Path(file_path)
+    if p.exists():
+        css = p.read_text(encoding="utf-8")
+        st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+load_local_css("styles.css")
+
+# ---- DB init
+DB_FILE = "quieno_money.db"
 def init_db():
-    conn = sqlite3.connect('quieno_money.db')
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     c = conn.cursor()
-    
-    # Tabla de usuarios
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   phone TEXT UNIQUE,
@@ -27,8 +35,6 @@ def init_db():
                   email TEXT,
                   saldo_cop REAL,
                   saldo_btc REAL)''')
-    
-    # Tabla de transacciones
     c.execute('''CREATE TABLE IF NOT EXISTS transactions
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   sender_id INTEGER,
@@ -37,422 +43,360 @@ def init_db():
                   amount_cop REAL,
                   amount_btc REAL,
                   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    
-    # Insertar usuario demo si no existe
     c.execute("SELECT COUNT(*) FROM users WHERE phone = '1234567890'")
     if c.fetchone()[0] == 0:
         c.execute("INSERT INTO users (phone, pin, name, email, saldo_cop, saldo_btc) VALUES (?, ?, ?, ?, ?, ?)",
                   ('1234567890', '12345', 'Usuario Demo', 'demo@quieno.money', 1000000, 0.05))
-    
     conn.commit()
     conn.close()
-
-# Inicializar la base de datos
 init_db()
 
-# Estado de la sesión
-if "page" not in st.session_state:
-    st.session_state.page = "login_phone"
-if "user_id" not in st.session_state:
-    st.session_state.user_id = None
-if "user_phone" not in st.session_state:
-    st.session_state.user_phone = ""
-if "user_pin" not in st.session_state:
-    st.session_state.user_pin = ""
-if "btc_price" not in st.session_state:
-    st.session_state.btc_price = 250_000_000
+# ---- session state defaults
+if "page" not in st.session_state: st.session_state.page = "login_phone"
+if "user_id" not in st.session_state: st.session_state.user_id = None
+if "user_phone" not in st.session_state: st.session_state.user_phone = ""
+if "user_pin" not in st.session_state: st.session_state.user_pin = ""
+if "btc_price" not in st.session_state: st.session_state.btc_price = 250_000_000
 
-# ======================
-# Funciones de base de datos
-# ======================
+# ---- DB helpers
 def get_user_by_phone(phone):
-    conn = sqlite3.connect('quieno_money.db')
+    conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("SELECT * FROM users WHERE phone = ?", (phone,))
-    user = c.fetchone()
+    u = c.fetchone()
     conn.close()
-    return user
+    return u
 
 def create_user(phone, pin, name, email):
-    conn = sqlite3.connect('quieno_money.db')
+    conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     try:
         c.execute("INSERT INTO users (phone, pin, name, email, saldo_cop, saldo_btc) VALUES (?, ?, ?, ?, ?, ?)",
                   (phone, pin, name, email, 1000000, 0.02))
         conn.commit()
-        user_id = c.lastrowid
+        uid = c.lastrowid
         conn.close()
-        return user_id
+        return uid
     except sqlite3.IntegrityError:
         conn.close()
         return None
 
 def update_user_balance(user_id, cop_change, btc_change):
-    conn = sqlite3.connect('quieno_money.db')
+    conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("UPDATE users SET saldo_cop = saldo_cop + ?, saldo_btc = saldo_btc + ? WHERE id = ?",
               (cop_change, btc_change, user_id))
     conn.commit()
     conn.close()
 
-def get_user_balance(user_id):
-    conn = sqlite3.connect('quieno_money.db')
-    c = conn.cursor()
-    c.execute("SELECT saldo_cop, saldo_btc FROM users WHERE id = ?", (user_id,))
-    balance = c.fetchone()
-    conn.close()
-    return balance
-
 def add_transaction(sender_id, receiver_id, trans_type, amount_cop, amount_btc):
-    conn = sqlite3.connect('quieno_money.db')
+    conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("INSERT INTO transactions (sender_id, receiver_id, type, amount_cop, amount_btc) VALUES (?, ?, ?, ?, ?)",
               (sender_id, receiver_id, trans_type, amount_cop, amount_btc))
     conn.commit()
     conn.close()
 
-def get_user_transactions(user_id):
-    conn = sqlite3.connect('quieno_money.db')
+def get_user_balance(user_id):
+    conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute('''SELECT t.timestamp, t.type, u.name, t.amount_cop, t.amount_btc 
-                 FROM transactions t 
-                 LEFT JOIN users u ON (t.sender_id = u.id OR t.receiver_id = u.id) 
-                 WHERE t.sender_id = ? OR t.receiver_id = ? 
-                 ORDER BY t.timestamp DESC''', (user_id, user_id))
-    transactions = c.fetchall()
+    c.execute("SELECT saldo_cop, saldo_btc FROM users WHERE id = ?", (user_id,))
+    r = c.fetchone()
     conn.close()
-    return transactions
+    return r if r else (0,0)
 
-# ======================
-# Precio BTC en tiempo real
-# ======================
-def get_btc_price_cop():
+def get_user_transactions(user_id):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""SELECT id, timestamp, type, sender_id, receiver_id, amount_cop, amount_btc
+                 FROM transactions
+                 WHERE sender_id = ? OR receiver_id = ?
+                 ORDER BY timestamp DESC""", (user_id, user_id))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+# ---- BTC price real time + history
+def get_btc_price_and_series(days=7):
     try:
-        # Intentar con CoinGecko primero
-        try:
-            response = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd", timeout=5)
-            if response.status_code == 200:
-                precio_usd = response.json()['bitcoin']['usd']
-                # Tasa de cambio aproximada USD a COP
-                tasa_usd_cop = 4100
-                return precio_usd * tasa_usd_cop
-        except:
-            # Fallback a Yahoo Finance
-            btc = yf.Ticker("BTC-USD")
-            precio_usd = btc.history(period="1d")["Close"][-1]
-            tasa_usd_cop = 4100
-            return precio_usd * tasa_usd_cop
-    except:
-        return st.session_state.btc_price
+        # prefer CoinGecko for current price
+        resp = requests.get("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=cop&days="+str(days), timeout=6)
+        if resp.status_code == 200:
+            data = resp.json()
+            prices = [p[1] for p in data.get("prices",[])]
+            current = prices[-1] if prices else st.session_state.btc_price
+            series = prices
+            st.session_state.btc_price = current
+            return current, series
+    except Exception:
+        pass
+    # fallback to yfinance for approximate USD -> COP
+    try:
+        ticker = yf.Ticker("BTC-USD")
+        hist = ticker.history(period=f"{days}d", interval="1d")["Close"]
+        usd_to_cop = 4100
+        series = (hist.astype(float) * usd_to_cop).tolist()
+        current = series[-1] if series else st.session_state.btc_price
+        st.session_state.btc_price = current
+        return current, series
+    except Exception:
+        return st.session_state.btc_price, [st.session_state.btc_price]*days
 
-# ======================
-# Generación de QR
-# ======================
-def generate_qr(user_id, amount_cop=0, amount_btc=0):
-    # Crear datos para el QR
-    qr_data = {
-        "user_id": user_id,
-        "amount_cop": amount_cop,
-        "amount_btc": amount_btc,
-        "timestamp": datetime.now().isoformat()
-    }
-    
-    # Convertir a string JSON
-    qr_data_str = json.dumps(qr_data)
-    
-    # Generar QR
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(qr_data_str)
+# ---- QR gen
+def generate_qr_base64(payload):
+    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=2)
+    qr.add_data(json.dumps(payload))
     qr.make(fit=True)
-    
     img = qr.make_image(fill_color="black", back_color="white")
-    
-    # Convertir a base64 para mostrar en Streamlit
-    buffered = io.BytesIO()
-    img.save(buffered, format="PNG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-    
-    return img_str
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode()
 
-# ======================
-# Páginas de la aplicación
-# ======================
+# ---- UI pages
 def login_phone():
-    st.title("Quiero.Money")
-    st.subheader("Ingresa tu celular (10 dígitos)")
-    phone = st.text_input("Celular", max_chars=10)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Iniciar sesión", use_container_width=True):
-            if len(phone) == 10 and phone.isdigit():
-                user = get_user_by_phone(phone)
-                if user:
+    st.markdown('<div class="brand">Quiero.Money</div>', unsafe_allow_html=True)
+    st.subheader("Inicio de sesión")
+    phone = st.text_input("Celular (10 dígitos)", max_chars=10, key="login_phone")
+    c1, c2 = st.columns([2,1])
+    with c1:
+        if st.button("Iniciar sesión", key="btn_login", use_container_width=True):
+            if len(phone)==10 and phone.isdigit():
+                u = get_user_by_phone(phone)
+                if u:
                     st.session_state.user_phone = phone
                     st.session_state.page = "login_pin"
-                    st.rerun()
+                    st.experimental_rerun()
                 else:
-                    st.error("Usuario no encontrado. Regístrate primero.")
+                    st.error("Usuario no registrado. Haz click en Crear cuenta.")
             else:
                 st.error("Número inválido")
-    
-    with col2:
-        if st.button("Crear cuenta", use_container_width=True):
+    with c2:
+        if st.button("Crear cuenta", key="btn_to_register", use_container_width=True):
             st.session_state.page = "register"
-            st.rerun()
+            st.experimental_rerun()
 
 def register():
     st.title("Crear cuenta")
-    
-    with st.form("register_form"):
+    with st.form("form_reg"):
         phone = st.text_input("Celular (10 dígitos)", max_chars=10)
         name = st.text_input("Nombre completo")
         email = st.text_input("Email")
         pin = st.text_input("PIN (5 dígitos)", type="password", max_chars=5)
-        
-        submitted = st.form_submit_button("Crear cuenta")
-        if submitted:
-            if len(phone) == 10 and phone.isdigit() and len(pin) == 5 and pin.isdigit():
-                user_id = create_user(phone, pin, name, email)
-                if user_id:
-                    st.success("Cuenta creada exitosamente. Ahora puedes iniciar sesión.")
+        if st.form_submit_button("Crear cuenta"):
+            if len(phone)==10 and phone.isdigit() and len(pin)==5 and pin.isdigit():
+                uid = create_user(phone, pin, name, email)
+                if uid:
+                    st.success("Cuenta creada. Ahora inicia sesión.")
                     st.session_state.page = "login_phone"
-                    st.rerun()
+                    st.experimental_rerun()
                 else:
-                    st.error("El número de celular ya está registrado.")
+                    st.error("El celular ya está registrado.")
             else:
-                st.error("Por favor, completa todos los campos correctamente.")
-    
-    if st.button("← Volver al login", use_container_width=True):
+                st.error("Completa correctamente los campos.")
+
+    if st.button("← Volver"):
         st.session_state.page = "login_phone"
-        st.rerun()
+        st.experimental_rerun()
 
 def login_pin():
-    st.title("Quiero.Money")
-    st.subheader("Ingresa tu PIN (5 dígitos)")
-    
+    st.title("Ingrese PIN")
+    st.write("Introduce tu PIN de 5 dígitos")
     user = get_user_by_phone(st.session_state.user_phone)
-    
-    cols = st.columns(5)
-    for i in range(5):
-        with cols[i]:
-            st.text(st.session_state.user_pin[i] if i < len(st.session_state.user_pin) else "")
-    
-    keypad = [
-        ["1","2","3"],
-        ["4","5","6"],
-        ["7","8","9"],
-        ["","0","←"]
-    ]
-    
-    for row in keypad:
+    # keypad simple
+    if "pin_buffer" not in st.session_state: st.session_state.pin_buffer = ""
+    cols = st.columns(3)
+    for row in [["1","2","3"],["4","5","6"],["7","8","9"],["←","0","OK"]]:
         cols = st.columns(3)
-        for i, key in enumerate(row):
-            if key:
-                if cols[i].button(key, use_container_width=True):
-                    if key == "←":
-                        st.session_state.user_pin = st.session_state.user_pin[:-1]
-                    elif len(st.session_state.user_pin) < 5:
-                        st.session_state.user_pin += key
-    
-    if len(st.session_state.user_pin) == 5:
-        if user and st.session_state.user_pin == user[2]:  # user[2] es el PIN
-            st.session_state.user_id = user[0]
-            st.session_state.user_pin = ""
-            st.session_state.page = "panel"
-            st.rerun()
-        else:
-            st.error("PIN incorrecto")
-            st.session_state.user_pin = ""
+        for key in row:
+            if cols[row.index(key)].button(key, use_container_width=True):
+                if key == "←":
+                    st.session_state.pin_buffer = st.session_state.pin_buffer[:-1]
+                elif key == "OK":
+                    # verify
+                    if user and st.session_state.pin_buffer == user[2]:
+                        st.session_state.user_id = user[0]
+                        st.session_state.page = "panel"
+                        st.session_state.pin_buffer = ""
+                        st.experimental_rerun()
+                    else:
+                        st.error("PIN incorrecto")
+                        st.session_state.pin_buffer = ""
+                else:
+                    if len(st.session_state.pin_buffer) < 5:
+                        st.session_state.pin_buffer += key
+    st.write("PIN:", "*" * len(st.session_state.pin_buffer))
+
+def render_sidebar():
+    st.sidebar.title("Menú")
+    options = ["Panel","Enviar","Recibir","Comprar BTC","Vender BTC","Recargar","Historial","Wallet","Cerrar sesión"]
+    choice = st.sidebar.radio("Navegación", options)
+    # map
+    mapping = {
+        "Panel":"panel",
+        "Enviar":"send_money",
+        "Recibir":"receive_money",
+        "Comprar BTC":"comprar",
+        "Vender BTC":"vender",
+        "Recargar":"recargar",
+        "Historial":"historial",
+        "Wallet":"wallet",
+        "Cerrar sesión":"logout"
+    }
+    st.session_state.page = mapping.get(choice, "panel")
 
 def panel():
-    # Actualizar precio de BTC
-    st.session_state.btc_price = get_btc_price_cop()
-    
-    # Obtener saldo actualizado
-    saldo_cop, saldo_btc = get_user_balance(st.session_state.user_id)
-    
-    st.sidebar.title("Menú")
-    if st.sidebar.button("Panel", use_container_width=True): 
-        st.session_state.page = "panel"
-        st.rerun()
-    if st.sidebar.button("Enviar dinero", use_container_width=True): 
-        st.session_state.page = "send_money"
-        st.rerun()
-    if st.sidebar.button("Recibir dinero", use_container_width=True): 
-        st.session_state.page = "receive_money"
-        st.rerun()
-    if st.sidebar.button("Comprar BTC", use_container_width=True): 
-        st.session_state.page = "comprar"
-        st.rerun()
-    if st.sidebar.button("Vender BTC", use_container_width=True): 
-        st.session_state.page = "vender"
-        st.rerun()
-    if st.sidebar.button("Historial", use_container_width=True): 
-        st.session_state.page = "historial"
-        st.rerun()
-    if st.sidebar.button("Cerrar sesión", use_container_width=True):
-        st.session_state.user_id = None
-        st.session_state.user_phone = ""
-        st.session_state.page = "login_phone"
-        st.rerun()
+    current_price, series = get_btc_price_and_series(days=7)
+    s_cop, s_btc = get_user_balance(st.session_state.user_id)
+    st.markdown('<div class="brand">Quiero.Money</div>', unsafe_allow_html=True)
+    st.subheader("Panel de control")
+    c1,c2,c3 = st.columns([1,1,1])
+    with c1:
+        st.markdown(f'<div class="metric-card"><div class="metric-title">Saldo COP</div><div class="metric-value">${s_cop:,.0f}</div></div>', unsafe_allow_html=True)
+    with c2:
+        st.markdown(f'<div class="metric-card"><div class="metric-title">Saldo BTC</div><div class="metric-value">{s_btc:.6f} BTC</div></div>', unsafe_allow_html=True)
+    with c3:
+        st.markdown(f'<div class="metric-card"><div class="metric-title">Precio BTC</div><div class="metric-value">${current_price:,.0f} COP</div></div>', unsafe_allow_html=True)
 
-    st.title("Quiero.Money")
-
-    # Mostrar saldos
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Saldo COP")
-        st.info(f"${saldo_cop:,.0f}")
-    with col2:
-        st.subheader("Saldo BTC")
-        st.info(f"{saldo_btc:.6f} BTC")
-
-    st.subheader("Precio BTC en tiempo real")
-    st.success(f"${st.session_state.btc_price:,.0f} COP")
-    
-    # Mini gráfico de precio (simplificado)
-    st.line_chart(pd.DataFrame({
-        'Precio BTC': [st.session_state.btc_price * 0.99, 
-                       st.session_state.btc_price * 1.01, 
-                       st.session_state.btc_price * 0.995, 
-                       st.session_state.btc_price]
-    }))
+    st.subheader("Gráfico BTC (últimos 7 días)")
+    df = pd.DataFrame({"Precio": series})
+    st.line_chart(df)
 
 def send_money():
-    if st.button("← Volver", use_container_width=True):
-        st.session_state.page = "panel"
-        st.rerun()
-    
     st.title("Enviar dinero")
-    
-    # Obtener saldo actualizado
-    saldo_cop, saldo_btc = get_user_balance(st.session_state.user_id)
-    
-    recipient_phone = st.text_input("Número de celular del destinatario", max_chars=10)
-    amount = st.number_input("Monto a enviar (COP)", min_value=0, max_value=int(saldo_cop), step=10000)
-    
+    s_cop, s_btc = get_user_balance(st.session_state.user_id)
+    recipient = st.text_input("Teléfono destinatario", max_chars=10)
+    amount = st.number_input("Monto (COP)", min_value=0, max_value=int(s_cop), step=5000)
     if st.button("Enviar", use_container_width=True):
-        if amount > 0 and recipient_phone:
-            # Verificar que el destinatario existe
-            recipient = get_user_by_phone(recipient_phone)
-            if recipient:
-                if recipient[0] != st.session_state.user_id:  # No enviarse a sí mismo
-                    # Actualizar saldos
+        if amount > 0 and recipient:
+            r = get_user_by_phone(recipient)
+            if r:
+                if r[0] != st.session_state.user_id:
                     update_user_balance(st.session_state.user_id, -amount, 0)
-                    update_user_balance(recipient[0], amount, 0)
-                    
-                    # Registrar transacción
-                    add_transaction(st.session_state.user_id, recipient[0], "Envío", -amount, 0)
-                    add_transaction(recipient[0], st.session_state.user_id, "Recepción", amount, 0)
-                    
-                    st.success(f"Has enviado ${amount:,.0f} COP a {recipient[3]}")
-                    st.session_state.page = "panel"
-                    st.rerun()
+                    update_user_balance(r[0], amount, 0)
+                    add_transaction(st.session_state.user_id, r[0], "Envío", -amount, 0)
+                    add_transaction(r[0], st.session_state.user_id, "Recepción", amount, 0)
+                    st.success("Envío exitoso")
                 else:
-                    st.error("No puedes enviarte dinero a ti mismo")
+                    st.error("No puedes enviarte a ti mismo")
             else:
-                st.error("El número de celular no está registrado")
+                st.error("Destinatario no encontrado")
         else:
-            st.error("Monto inválido o destinatario no especificado")
+            st.error("Monto o destinatario inválido")
 
 def receive_money():
-    if st.button("← Volver", use_container_width=True):
-        st.session_state.page = "panel"
-        st.rerun()
-    
     st.title("Recibir dinero")
-    
-    amount = st.number_input("Monto a recibir (COP)", min_value=0, step=10000)
-    
-    # Generar QR
-    qr_img_str = generate_qr(st.session_state.user_id, amount, 0)
-    st.image(f"data:image/png;base64,{qr_img_str}", caption="Código QR para recibir pagos", use_column_width=True)
-    
-    st.info("Comparte este código QR para recibir pagos")
+    amount = st.number_input("Monto a recibir (COP)", min_value=0, step=5000)
+    if st.button("Generar QR"):
+        payload = {"user_id": st.session_state.user_id, "amount_cop": amount, "ts": datetime.now().isoformat()}
+        img_b64 = generate_qr_base64(payload)
+        st.image(f"data:image/png;base64,{img_b64}", caption="Escanea para pagar", use_column_width=False)
 
 def comprar():
-    if st.button("← Volver", use_container_width=True):
-        st.session_state.page = "panel"
-        st.rerun()
-
     st.title("Comprar BTC")
-    
-    # Obtener saldo actualizado
-    saldo_cop, saldo_btc = get_user_balance(st.session_state.user_id)
-    
-    monto = st.number_input("Monto en COP", min_value=0, max_value=int(saldo_cop), step=10000)
-    if st.button("Comprar", use_container_width=True):
-        if monto > 0:
-            btc = monto / st.session_state.btc_price
-            update_user_balance(st.session_state.user_id, -monto, btc)
-            add_transaction(st.session_state.user_id, None, "Compra BTC", -monto, btc)
-            st.success(f"Compra realizada: {btc:.6f} BTC")
-            st.session_state.page = "panel"
-            st.rerun()
-        else:
-            st.error("Monto inválido")
+    s_cop, s_btc = get_user_balance(st.session_state.user_id)
+    monto = st.number_input("Monto en COP", min_value=0, max_value=int(s_cop), step=5000)
+    if st.button("Comprar"):
+        if monto>0:
+            price, _ = get_btc_price_and_series(days=1)
+            btc_amount = monto/price
+            update_user_balance(st.session_state.user_id, -monto, btc_amount)
+            add_transaction(st.session_state.user_id, None, "Compra BTC", -monto, btc_amount)
+            st.success(f"Comprado {btc_amount:.6f} BTC")
 
 def vender():
-    if st.button("← Volver", use_container_width=True):
-        st.session_state.page = "panel"
-        st.rerun()
-
     st.title("Vender BTC")
-    
-    # Obtener saldo actualizado
-    saldo_cop, saldo_btc = get_user_balance(st.session_state.user_id)
-    
-    monto_btc = st.number_input("Monto en BTC", min_value=0.0, max_value=float(saldo_btc), step=0.001, format="%.6f")
-    if st.button("Vender", use_container_width=True):
-        if monto_btc > 0:
-            cop = monto_btc * st.session_state.btc_price
-            update_user_balance(st.session_state.user_id, cop, -monto_btc)
-            add_transaction(st.session_state.user_id, None, "Venta BTC", cop, -monto_btc)
-            st.success(f"Venta realizada: ${cop:,.0f} COP")
-            st.session_state.page = "panel"
-            st.rerun()
-        else:
-            st.error("Monto inválido")
+    s_cop,s_btc = get_user_balance(st.session_state.user_id)
+    btc_amount = st.number_input("Monto en BTC", min_value=0.0, max_value=float(s_btc), step=0.001, format="%.6f")
+    if st.button("Vender"):
+        if btc_amount>0:
+            price, _ = get_btc_price_and_series(days=1)
+            cop = btc_amount*price
+            update_user_balance(st.session_state.user_id, cop, -btc_amount)
+            add_transaction(st.session_state.user_id, None, "Venta BTC", cop, -btc_amount)
+            st.success(f"Vendiste {btc_amount:.6f} BTC -> ${cop:,.0f} COP")
+
+def recargar():
+    st.title("Recargar saldo")
+    st.markdown("Selecciona método de recarga:")
+    c1, c2 = st.columns(2)
+    # assets/daviplata.png and assets/nequi.png expected
+    dav_path = Path("assets/daviplata.png")
+    nequi_path = Path("assets/nequi.png")
+    with c1:
+        if dav_path.exists():
+            st.image(str(dav_path), width=160)
+        st.markdown("**Daviplata**")
+        if st.button("Recargar con Daviplata"):
+            st.info("Instrucciones: transfiera a la cuenta... (simulado)")
+    with c2:
+        if nequi_path.exists():
+            st.image(str(nequi_path), width=160)
+        st.markdown("**Nequi**")
+        if st.button("Recargar con Nequi"):
+            st.info("Instrucciones: transfiera a la cuenta... (simulado)")
+
+    # input para simular recarga
+    monto = st.number_input("Monto a recargar (COP)", min_value=0, step=5000)
+    if st.button("Simular recarga"):
+        if monto>0:
+            update_user_balance(st.session_state.user_id, monto, 0)
+            add_transaction(None, st.session_state.user_id, "Recarga", monto, 0)
+            st.success(f"Recargaste ${monto:,.0f} COP")
 
 def historial():
-    if st.button("← Volver", use_container_width=True):
-        st.session_state.page = "panel"
-        st.rerun()
+    st.title("Historial")
+    rows = get_user_transactions(st.session_state.user_id)
+    if not rows:
+        st.info("No hay movimientos.")
+        return
+    df = pd.DataFrame(rows, columns=["id","ts","tipo","sender","receiver","monto_cop","monto_btc"])
+    df['ts'] = pd.to_datetime(df['ts'])
+    st.dataframe(df.sort_values('ts', ascending=False))
 
-    st.title("Historial de Transacciones")
-    
-    transactions = get_user_transactions(st.session_state.user_id)
-    
-    if transactions:
-        df = pd.DataFrame(transactions, columns=['Fecha', 'Tipo', 'Usuario', 'Monto COP', 'Monto BTC'])
-        st.dataframe(df)
+def wallet():
+    st.title("Wallet / MetaMask")
+    st.markdown("**Conectar MetaMask** (instrucciones):")
+    st.markdown("""
+    1. Abre https://metamask.io/es y instala la extensión si no la tienes.  
+    2. Abre MetaMask en el navegador y copia tu dirección pública.  
+    3. Pega la dirección abajo para que la aplicación la muestre (esto **no** firma ni conecta la extensión).
+    """)
+    if st.button("Abrir MetaMask (sitio oficial)", use_container_width=True):
+        js = "window.open('https://metamask.io/es', '_blank').focus();"
+        st.components.v1.html(f"<script>{js}</script>", height=0)
+    address = st.text_input("Pega aquí tu dirección pública (opcional)")
+    if address:
+        st.markdown(f"Dirección: `{address}`")
+
+def logout():
+    st.session_state.user_id = None
+    st.session_state.user_phone = ""
+    st.session_state.page = "login_phone"
+    st.experimental_rerun()
+
+# ---- main router
+def main():
+    if not st.session_state.user_id:
+        # show login / register flows
+        if st.session_state.page == "login_phone": login_phone()
+        elif st.session_state.page == "register": register()
+        elif st.session_state.page == "login_pin": login_pin()
+        return
+
+    # authenticated
+    render_sidebar()
+    page = st.session_state.page
+    if page == "panel": panel()
+    elif page == "send_money" or page == "send": send_money()
+    elif page == "receive_money" or page == "recibir": receive_money()
+    elif page == "comprar": comprar()
+    elif page == "vender": vender()
+    elif page == "recargar": recargar()
+    elif page == "historial": historial()
+    elif page == "wallet": wallet()
+    elif page == "logout": logout()
     else:
-        st.info("No hay transacciones registradas aún.")
+        panel()
 
-# ======================
-# Router
-# ======================
-if st.session_state.page == "login_phone":
-    login_phone()
-elif st.session_state.page == "register":
-    register()
-elif st.session_state.page == "login_pin":
-    login_pin()
-elif st.session_state.page == "panel":
-    panel()
-elif st.session_state.page == "send_money":
-    send_money()
-elif st.session_state.page == "receive_money":
-    receive_money()
-elif st.session_state.page == "comprar":
-    comprar()
-elif st.session_state.page == "vender":
-    vender()
-elif st.session_state.page == "historial":
-    historial()
+if __name__ == "__main__":
+    main()
