@@ -1,6 +1,6 @@
-﻿streamlit==1.28.0
-yfinance==0.2.18
-pandas==2.0.3
+﻿treamlit==1.38.0
 qrcode[pil]==7.4.2
-pillow==10.0.0
-requests==2.31.0
+pandas==2.2.3
+yfinance==0.2.48
+requests==2.32.3
+Pillow==10.4.0
